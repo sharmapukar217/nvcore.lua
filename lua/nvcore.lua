@@ -17,6 +17,10 @@ local M = {
   },
 }
 
+function M.get_config()
+	return M.config
+end
+
 local function omit(tbl, keys_to_omit)
   local new_tbl = {}
   local keys_to_omit_set = {}
