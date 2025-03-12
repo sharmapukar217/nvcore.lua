@@ -1,17 +1,19 @@
+--- A placeholder variable used to queue section names to be registered by which-key
+---@type table?
+local wk_queue = {}
+
 local M = {
-  --- A placeholder variable used to queue section names to be registered by which-key
-  ---@type table?
-  wk_queue = {},
+  config = {
+    --- Whether to add <localleader> keymaps for all <leader> keymaps.
+    --- @type boolean
+    map_localleader = true,
 
-  --- Whether to add <localleader> keymaps for all <leader> keymaps.
-  --- @type boolean
-  map_localleader = true,
-
-  --- Default options for keymaps, autocmds and user commands.
-  default_opts = {
-    keymaps = {},
-    commands = {},
-    autocmds = {},
+    --- Default options for keymaps, autocmds and user commands.
+    default_opts = {
+      keymaps = {},
+      commands = {},
+      autocmds = {},
+    },
   },
 }
 
@@ -40,7 +42,7 @@ local function deep_merge(t1, t2)
   end
 end
 
-local function setup(opts)
+function M.setup(opts)
   M.map_localleader = opts.map_localleader or M.map_localleader
   deep_merge(M.default_opts, opts.default_opts or {})
 
@@ -85,10 +87,8 @@ local function setup(opts)
   for _, keymap in ipairs(opts.keymaps or {}) do
     local keymap_table = keymap.keymaps or { keymap }
 
-    if keymap.group and keymap.keymaps then
-	    table.insert(M.wk_queue, omit(keymap, { "keymaps" }))
-    end
-    table.insert(M.wk_queue, keymap_table)
+    if keymap.group and keymap.keymaps then table.insert(wk_queue, omit(keymap, { "keymaps" })) end
+    table.insert(wk_queue, keymap_table)
 
     for _, keymap in ipairs(keymap_table) do
       local key, action = keymap[1], keymap[2]
@@ -106,17 +106,15 @@ local function setup(opts)
   vim.api.nvim_create_autocmd("User", {
     pattern = "LazyLoad",
     callback = function(args)
-      if args.data ~= "which-key.nvim" or #M.wk_queue == 0 then return end
+      if args.data ~= "which-key.nvim" or #wk_queue == 0 then return end
 
       local wk_avail, wk = pcall(require, "which-key")
       if wk_avail then
-        wk.add(M.wk_queue)
-        M.wk_queue = {}
+        wk.add(wk_queue)
+        wk_queue = {}
       end
     end,
   })
 end
 
-return {
-  setup = setup,
-}
+return M
