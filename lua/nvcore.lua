@@ -1,9 +1,4 @@
 local M = {
-
-  --- Whether to add <localleader> keymaps for all <leader> keymaps.
-  --- @type boolean
-  map_localleader = true,
-
   --- Default options for keymaps, autocmds and user commands.
   default_opts = {
     keymaps = {},
@@ -43,8 +38,7 @@ end
 
 function setup(opts)
   deep_merge(M.default_opts, opts.default_opts or {})
-  M.map_localleader = opts.map_localleader or M.map_localleader
-
+  
   -- set opts
   if opts.options then
     for scope, settings in pairs(opts.options) do
@@ -86,21 +80,24 @@ function setup(opts)
   for _, keymap in ipairs(opts.keymaps or {}) do
     local keymap_table = keymap.keymaps or { keymap }
 
-    if keymap.group and keymap.keymaps then
+    if keymap.keymaps then
     	table.insert(wk_queue, omit(keymap, { "keymaps" }))
     end
+
     table.insert(wk_queue, keymap_table)
 
-    for _, keymap in ipairs(keymap_table) do
-      local key, action = keymap[1], keymap[2]
-      local mode = keymap.mode or "n"
+    for _, keymap_opts in ipairs(keymap_table) do
+      local mode = keymap_opts.mode or "n"
+      local key, action = keymap_opts[1], keymap_opts[2]
+      local icon, group = keymap_opts.icon, keymap_opts.group
 
-      keymap[1] = nil
-      keymap[2] = nil
-      keymap.icon = nil
-      keymap.group = nil
+      keymap_opts[1], keymap_opts[2] = nil
+      keymap_opts.icon, keymap_opts.group = nil
 
-      vim.keymap.set(mode, key, action, vim.tbl_extend("force", M.default_opts.keymaps, keymap))
+      vim.keymap.set(mode, key, action, vim.tbl_extend("force", M.default_opts.keymaps, keymap_opts))
+
+      keymap_opts[1], keymap_opts[2] = key, action
+      keymap_opts.icon, keymap_opts.group = icon, group
     end
   end
 
