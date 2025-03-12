@@ -1,25 +1,20 @@
---- A placeholder variable used to queue section names to be registered by which-key
----@type table?
-local wk_queue = {}
-
 local M = {
-  config = {
-    --- Whether to add <localleader> keymaps for all <leader> keymaps.
-    --- @type boolean
-    map_localleader = true,
 
-    --- Default options for keymaps, autocmds and user commands.
-    default_opts = {
-      keymaps = {},
-      commands = {},
-      autocmds = {},
-    },
+  --- Whether to add <localleader> keymaps for all <leader> keymaps.
+  --- @type boolean
+  map_localleader = true,
+
+  --- Default options for keymaps, autocmds and user commands.
+  default_opts = {
+    keymaps = {},
+    commands = {},
+    autocmds = {},
   },
 }
 
-function M.get_config()
-	return M.config
-end
+--- A placeholder variable used to queue section names to be registered by which-key
+---@type table?
+local wk_queue = {}
 
 local function omit(tbl, keys_to_omit)
   local new_tbl = {}
@@ -46,31 +41,15 @@ local function deep_merge(t1, t2)
   end
 end
 
-function M.setup(opts)
-  M.map_localleader = opts.map_localleader or M.map_localleader
+function setup(opts)
   deep_merge(M.default_opts, opts.default_opts or {})
+  M.map_localleader = opts.map_localleader or M.map_localleader
 
   -- set opts
   if opts.options then
     for scope, settings in pairs(opts.options) do
       for setting, value in pairs(settings) do
         vim[scope][setting] = value
-      end
-    end
-  end
-
-  -- autocmds
-  if opts.autocmds then
-    for augroup, autocmds in pairs(opts.autocmds) do
-      if not autocmds then return end
-
-      local augroup_id = vim.api.nvim_create_augroup(augroup, { clear = true })
-      for _, autocmd in ipairs(autocmds) do
-        local event = autocmd.event
-        autocmd.event = nil
-        autocmd.group = augroup_id
-        vim.api.nvim_create_autocmd(event, autocmd)
-        autocmd.event = event
       end
     end
   end
@@ -82,8 +61,24 @@ function M.setup(opts)
 
       local action = spec[1]
       spec[1] = nil
-      vim.api.nvim_create_user_command(cmd, action, spec)
+      vim.api.nvim_create_user_command(cmd, action, vim.tbl_extend("force", M.default_opts.commands, spec))
       spec[1] = action
+    end
+  end
+
+  -- autocmds
+  if opts.autocmds then
+    for augroup, autocmds in pairs(opts.autocmds) do
+      if not autocmds then return end
+
+      local augroup_id = vim.api.nvim_create_augroup(augroup, { clear = true })
+      for _, autocmd_opts in ipairs(autocmds) do
+        local event = autocmd_opts.event
+        autocmd_opts.event = nil
+        autocmd_opts.group = augroup_id
+        vim.api.nvim_create_autocmd(event, autocmd_opts)
+        autocmd_opts.event = event
+      end
     end
   end
 
@@ -91,7 +86,9 @@ function M.setup(opts)
   for _, keymap in ipairs(opts.keymaps or {}) do
     local keymap_table = keymap.keymaps or { keymap }
 
-    if keymap.group and keymap.keymaps then table.insert(wk_queue, omit(keymap, { "keymaps" })) end
+    if keymap.group and keymap.keymaps then
+    	table.insert(wk_queue, omit(keymap, { "keymaps" }))
+    end
     table.insert(wk_queue, keymap_table)
 
     for _, keymap in ipairs(keymap_table) do
@@ -121,4 +118,6 @@ function M.setup(opts)
   })
 end
 
-return M
+return {
+  setup = setup,
+}
